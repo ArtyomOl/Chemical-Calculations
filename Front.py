@@ -35,7 +35,7 @@ class AttemptWidget(QWidget):
     def drawChart(self):
         method = get_method(self.attempt.func, self.attempt.id_method, self.attempt.id_exp)
         ax = self.figure.add_subplot(111)
-        method.draw_chart(ax)
+        method.draw_chart(self.attempt.init,ax)
         self.canvas.draw()
 
     def showInits(self):
