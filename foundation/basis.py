@@ -110,7 +110,18 @@ class Model:
             return False
 
     def createFunction(self) -> Func:
-        return Func(self.equation)
+        print(self.initial_data)
+        print(self.equation)
+        print(self.replacingExpressions())
+        
+        return Func(self.replacingExpressions())
+    
+    def replacingExpressions(self) -> str:
+        new_equation = self.equation
+        for item in self.initial_data.items():
+            while item[0] in new_equation:
+                new_equation = new_equation.replace(item[0], item[1])
+        return new_equation
     
     @staticmethod
     def isInDB(model_id)  -> bool:

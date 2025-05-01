@@ -176,6 +176,9 @@ class ModelDialog(QDialog):
             model = foundation.basis.getModelById(self.model_id)
             self.ui.nameEdit.setText(model.name)
             self.ui.equationEdit.setText(model.equation)
+            self.ui.initialEdit.setText('')
+            for item in model.initial_data.items():
+                self.ui.initialEdit.append(str(item[0]) + ' : ' + str(item[1]))
             
     
     def saveChanges(self):
@@ -191,9 +194,9 @@ class ModelDialog(QDialog):
                 while '  ' in expression:
                     expression = expression.replace('  ', ' ')
                 expression = expression.replace(': ', ':')
-                expression = expression.replace(': ', ':')
+                expression = expression.replace(' :', ':')
                 if len(expression.split(':')) < 2:
-                    print('input error')
+                    self.showError('Некорректный ввод')
                     return
                 key, value = expression.split(':')[0], expression.split(':')[1]
                 if value.isnumeric():
@@ -209,6 +212,16 @@ class ModelDialog(QDialog):
             new_model.addIntoDB()
         
         self.reject()
+
+    @staticmethod
+    def showError(message):
+        """Показать окно с ошибкой"""
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setText("Ошибка")
+        msg.setInformativeText(message)
+        msg.setWindowTitle("Ошибка")
+        msg.exec_()
 
 
 #   ОСНОВНОЕ ОКНО   ##################################################################################################################################################
