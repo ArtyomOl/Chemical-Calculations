@@ -140,7 +140,6 @@ class ImportExperimentDialog(QDialog):
         self.ui.fileDialogButton.clicked.connect(self.openPathDialog)
         self.ui.addButton.clicked.connect(self.addButtonClicked)
 
-
     def openPathDialog(self):
         options = QFileDialog.Options()
         fileName, _ = QFileDialog.getOpenFileName(self, "Выберите файл", "", "All Files (*.csv *.xlsx);;CSV Files (*.csv);;Excel Files (*.xlsx)", options=options)
@@ -165,6 +164,45 @@ class ImportExperimentDialog(QDialog):
         msg.setWindowTitle("Сообщение об ошибке")
         msg.exec_()
 
+
+class ModelDialog(QDialog):
+    def __init__(self, model_id = None):
+        super().__init__()
+        self.model_id = model_id
+        self.ui = uic.loadUi('ui/ModelDialog.ui', self)
+        self.ui.saveButton.clicked.connect(self.saveChanges)
+    
+    def saveChanges(self):
+        name = self.ui.nameEdit.text()
+        equation = self.ui.equationEdit.text()
+        initials = self.ui.initialEdit.toPlainText()
+
+        initial_dict = {}
+
+        if initials:
+            initials_array = initials.split('\n')
+            for expression in initials_array:
+                while '  ' in expression:
+                    expression = expression.replace('  ', ' ')
+                expression = expression.replace(': ', ':')
+                expression = expression.replace(': ', ':')
+                if len(expression.split(':')) < 2:
+                    print('input error')
+                    return
+                key, value = expression.split(':')[0], expression.split(':')[1]
+                if value.isnumeric():
+                    initial_dict[key] = float(value)
+                else:
+                    initial_dict[key] = value
+                    
+        new_model = foundation.basis.Model(name, equation, initial_dict)
+        
+        if self.model_id:
+            new_model.updateInDB()
+        else:
+            new_model.addIntoDB()
+        
+        self.reject()
 
 
 #   ОСНОВНОЕ ОКНО   ##################################################################################################################################################
@@ -197,7 +235,11 @@ class MainWindow(QMainWindow):
         # для элементов
         self.ui.update_button_elements.clicked.connect(self.createTableElements)
 
+        # для моделей
+        self.ui.addModelButton.clicked.connect(self.addModel)
+
         self.createTableElements()
+        self.createTableModels()
 
 
     # создание таблицы экспериментов
@@ -316,6 +358,19 @@ class MainWindow(QMainWindow):
                     d.exec()
         except Exception as ex:
             print(ex)
+    
+
+    # создание таблицы элементов
+    def createTableModels(self):
+        self.ui.modelsTab.setRowCount(0)
+        self.ui.modelsTab.setRowCount(1)
+
+        models = getAllElements('models')
+        
+        for i,model in enumerate(models):
+            self.ui.modelsTab.insertRow(self.ui.modelsTab.rowCount())
+            self.ui.modelsTab.setItem(i, 0, QTableWidgetItem(model['name']))
+            self.ui.modelsTab.setItem(i, 1, QTableWidgetItem(model['equation']))
 
     # Создание страницы рассчета
     def makeCalculatePage(self):
@@ -329,11 +384,14 @@ class MainWindow(QMainWindow):
         self.ui.methodsComboBox.addItem('Антиградиент')
         self.ui.methodsComboBox.addItem('Ньютона')
 
+        self.fillModelComboBox()
+
         self.methods_dict = {'Имитации отжига': 0, 'Гаусса-Зейделя': 1, 'Хукка-Дживса': 2, 'Антиградиент': 3, 'Ньютона': 4}
         self.method_name = 'Имитации отжига'
 
         self.model = maths.functions.margulis
 
+        self.ui.modelComboBox.activated.connect(self.updateModelComboBox)
         self.ui.methodsComboBox.activated.connect(self.updateMethodsComboBox)
         self.attemptsTabWidget.tabCloseRequested.connect(self.closeAttemptTab)
 
@@ -361,12 +419,28 @@ class MainWindow(QMainWindow):
         else:
             self.turnVisibility(visibility=True)
 
+    # Заполнение modelComboBox
+    def fillModelComboBox(self):
+        """
+        Заполняет QComboBox (modelComboBox) названиями моделей из базы данных.
+        Очищает существующие элементы перед заполнением.
+        """
+        try:
+            self.ui.modelComboBox.clear()
+            
+            models = foundation.basis.getAllModelsName()
+            
+            for model in models:
+                self.ui.modelComboBox.addItem(model[0])
+                
+        except Exception as ex:
+            print(f"Ошибка при заполнении комбобокса моделями: {ex}")
+
     # Изменение modelComboBox
-    def updateMethodsComboBox(self):
-        model_name = self.ui.methodsComboBox.currentText()
-        match model_name:
-            case 'Margulis':
-                self.model = maths.functions.margulis
+    def updateModelComboBox(self):
+        model_name = self.ui.modelComboBox.currentText()
+        model, _ = foundation.basis.getModelByName(model_name)
+        self.model = model.createFunction()
 
     # Изменение methodsComboBox
     def updateMethodsComboBox(self):
@@ -427,7 +501,6 @@ class MainWindow(QMainWindow):
                         except Exception as ex:
                             self.errorMessage()
                         result = simple_calculation(id_exp, init_data, self.methods_dict[self.method_name], self.model)
-                        #attempt = Attempt(id_exp, self.model, self.methods_dict[self.method_name], {'a12': a12, 'a21': a21}, {'a12': a12_new, 'a21': a21_new})
                         attempt = Attempt(id_exp, self.model, self.methods_dict[self.method_name], init_data, result)
                     page = AttemptWidget(attempt)
                     n = attempt.number
@@ -455,10 +528,17 @@ class MainWindow(QMainWindow):
         self.ui.firstElementEdit.setText(second_element)
         self.ui.secondElementEdit.setText(first_element)
 
+    def addModel(self):
+        modelDialog = ModelDialog()
+        modelDialog.finished.connect(self.onModelDialogClosed)
+        modelDialog.show()
+
+    def onModelDialogClosed(self):
+        self.createTableModels()
+        self.fillModelComboBox()
+
 
 ##################################################################################################################################################################
-
-
 
 
 if __name__ == '__main__':

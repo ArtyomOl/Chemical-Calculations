@@ -1,7 +1,7 @@
 import decimal as dc
 from sympy import *
 
-class Function:
+class Func:
     def __init__(self, function_string: str = '') -> None:
         self.function_string = function_string
         self.compiled_expression = compile(self.function_string, '<string>', 'eval')
@@ -36,4 +36,4 @@ class Function:
     
 
 
-margulis = Function("8.31 * temp * x * (1 - x) * ((1 - x) * a12 + a21 * x)")
+margulis = Func("8.31 * temp * x * (1 - x) * ((1 - x) * a12 + a21 * x)")

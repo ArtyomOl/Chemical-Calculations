@@ -1,6 +1,6 @@
 import json
 
-from maths.functions import Function
+from maths.functions import Func
 import maths
 from storage.db import create_connection
 from config.config import user_name
@@ -47,7 +47,7 @@ class Element:
 
 class Attempt:
     count_attempts = 0
-    def __init__(self,  id_exp: int, func: Function, id_method: int, init: dict, result: dict):
+    def __init__(self,  id_exp: int, func: Func, id_method: int, init: dict, result: dict):
         self.id_exp = id_exp
         self.func = func
         self.id_method = id_method
@@ -68,6 +68,59 @@ class Attempt:
                 connection.commit()
         except Exception as ex:
             print(ex)
+
+class Model:
+    def __init__(self, name: str, equation: str, initial_data: dict):
+        self.name = name
+        self.equation = equation
+        self.initial_data = initial_data
+    
+    def addIntoDB(self):
+        try:
+            init_data = json.dumps(self.initial_data)
+            cursor = connection.cursor()
+            insert_query = f"INSERT INTO models (name, equation, initial_data) VALUES ('{self.name}', '{self.equation}', '{init_data}');"
+            cursor.execute(insert_query)
+            connection.commit()
+        except Exception as ex:
+            print(ex)
+    
+    def updateInDB(self, model_id: int) -> bool:
+        """
+        Обновляет существующую модель в базе данных по заданному id.
+        Возвращает True, если обновление прошло успешно, и False, если модель не найдена.
+        """
+        if not self.isInDB(model_id):
+            return False
+        
+        try:
+            init_data = json.dumps(self.initial_data)
+            cursor = connection.cursor()
+            update_query = """
+                UPDATE models 
+                SET name = ?, equation = ?, initial_data = ?
+                WHERE id = ?
+            """
+            cursor.execute(update_query, 
+                        (self.name, self.equation, init_data, model_id))
+            connection.commit()
+            return True
+        except Exception as ex:
+            print(f"Ошибка при обновлении модели: {ex}")
+            return False
+
+    def createFunction(self) -> Func:
+        return Func(self.equation)
+    
+    @staticmethod
+    def isInDB(model_id)  -> bool:
+        cursor =  connection.cursor()
+        select_query = f"SELECT id FROM models WHERE id = {model_id}"
+        cursor.execute(select_query)
+        rows = cursor.fetchall()
+        if len(rows) == 0:
+            return False
+        return True
 
 
 
@@ -211,6 +264,44 @@ def getElementsListByFilter(element_filter: str):
                 returned_list += SEARCH_TREE.get_elements(f)
             is_except = False
     return returned_list
+
+def getModelByName(name: str):
+    """
+    Получает модель из базы данных по имени.
+    Возвращает экземпляр класса Model, если модель найдена, иначе None.
+    """
+    try:
+        cursor = connection.cursor()
+        select_query = "SELECT id, name, equation, initial_data FROM models WHERE name = ?"
+        cursor.execute(select_query, (name,))
+        row = cursor.fetchone()
+        
+        if row:
+            model_id, name, equation, initial_data_json = row
+            initial_data = json.loads(initial_data_json)
+            return Model(name, equation, initial_data), model_id
+        return None, None
+    except Exception as ex:
+        print(f"Ошибка при получении модели по имени: {ex}")
+        return None, None
+
+def getAllModelsName():
+    """
+    Возвращает все имена моделей, отсортированные по алфавиту
+    """
+    cursor = connection.cursor()
+    cursor.execute("SELECT name FROM models ORDER BY name")
+    models = cursor.fetchall()
+    return models
+
+
+# def create_models_table():
+#     cursor = connection.cursor()
+#     create_table_query = "CREATE TABLE models (id int AUTO_INCREMENT, "\
+#                                 "name varchar(64), "\
+#                                 "equation varchar(64), "\
+#                                 "initial_data, PRIMARY KEY(id));"
+#     cursor.execute(create_table_query)
 
 
 
