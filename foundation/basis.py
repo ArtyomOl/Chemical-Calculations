@@ -70,16 +70,17 @@ class Attempt:
             print(ex)
 
 class Model:
-    def __init__(self, name: str, equation: str, initial_data: dict):
+    def __init__(self, name: str, equation: str, initial_data: dict, calculated_parameter: str):
         self.name = name
         self.equation = equation
         self.initial_data = initial_data
+        self.calculated_parameter = calculated_parameter
     
     def addIntoDB(self):
         try:
             init_data = json.dumps(self.initial_data)
             cursor = connection.cursor()
-            insert_query = f"INSERT INTO models (name, equation, initial_data) VALUES ('{self.name}', '{self.equation}', '{init_data}');"
+            insert_query = f"INSERT INTO models (name, equation, initial_data, calculated_parameter) VALUES ('{self.name}', '{self.equation}', '{init_data}, {self.calculated_parameter}');"
             cursor.execute(insert_query)
             connection.commit()
         except Exception as ex:
@@ -98,11 +99,11 @@ class Model:
             cursor = connection.cursor()
             update_query = """
                 UPDATE models 
-                SET name = ?, equation = ?, initial_data = ?
+                SET name = ?, equation = ?, initial_data = ?, calculated_parameter = ?
                 WHERE id = ?
             """
             cursor.execute(update_query, 
-                        (self.name, self.equation, init_data, model_id))
+                        (self.name, self.equation, init_data, self.calculated_parameter, model_id))
             connection.commit()
             return True
         except Exception as ex:
@@ -114,7 +115,7 @@ class Model:
         print(self.equation)
         print(self.replacingExpressions())
         
-        return Func(self.replacingExpressions())
+        return Func(self.replacingExpressions(), self.calculated_parameter)
     
     def replacingExpressions(self) -> str:
         new_equation = self.equation
@@ -132,8 +133,6 @@ class Model:
         if len(rows) == 0:
             return False
         return True
-
-
 
 # для разбиения строки json формата в строку пользовательского формата
 def crash(arr: list):
@@ -153,7 +152,6 @@ def getAllElements(table_name: str):
         rows[i] = dict(rows[i])
     return rows
 
-
 # для добавления в бд информации о попытке расчета
 def addAttempt(id_exp: int, id_method: int, init: dict, result: dict):
     try:
@@ -170,14 +168,12 @@ def addAttempt(id_exp: int, id_method: int, init: dict, result: dict):
         print(ex)
 
 # получение данных об эксперименте по его id
-def getExperimentsAsID(id_exp: int):
+def getExperimentAsID(id_exp: int):
     cursor = connection.cursor()
     select_query = "SELECT * FROM experiments WHERE id = ?"
     cursor.execute(select_query, (id_exp,))
     row = cursor.fetchone()
     return dict(row) if row else None
-
-
 
 # Для работы с базами данных вне классов
 def deleteExperiments(id_exp: int):
@@ -208,7 +204,6 @@ def getArticleName(article_id:int):
     else:
         return None
 
-
 # извлечение ветки элемента из базы данных
 def getBranch(element_name: str)->list:
     cursor = connection.cursor()
@@ -216,7 +211,6 @@ def getBranch(element_name: str)->list:
     cursor.execute(select_query)
     branch = cursor.fetchall()
     return branch[0]['branch'].split(';')[:-1]
-
 
 def getIDsExperimentByName(element_type: str)->list:
     stree = maths.search.SearchTree()
@@ -232,7 +226,6 @@ def getIDsExperimentByName(element_type: str)->list:
             select_query += '\'' + element + '\' OR '
         select_query = select_query[:len(select_query) - 4]
         select_query += ';'
-        print(select_query)
         cursor.execute(select_query)
         res = cursor.fetchall()
         result = []
@@ -283,14 +276,14 @@ def getModelByName(name: str):
     """
     try:
         cursor = connection.cursor()
-        select_query = "SELECT id, name, equation, initial_data FROM models WHERE name = ?"
+        select_query = "SELECT id, name, equation, initial_data, calculated_parameter FROM models WHERE name = ?"
         cursor.execute(select_query, (name,))
         row = cursor.fetchone()
         
         if row:
-            model_id, name, equation, initial_data_json = row
+            model_id, name, equation, initial_data_json, calc_param = row
             initial_data = json.loads(initial_data_json)
-            return Model(name, equation, initial_data), model_id
+            return Model(name, equation, initial_data, calc_param), model_id
         return None, None
     except Exception as ex:
         print(f"Ошибка при получении модели по имени: {ex}")
@@ -303,17 +296,17 @@ def getModelById(model_id: int):
     """
     try:
         cursor = connection.cursor()
-        select_query = "SELECT id, name, equation, initial_data FROM models WHERE id = ?"
+        select_query = "SELECT id, name, equation, initial_data, calculated_parameter FROM models WHERE id = ?"
         cursor.execute(select_query, (model_id,))
         row = cursor.fetchone()
         
         if row:
-            model_id, name, equation, initial_data_json = row
+            model_id, name, equation, initial_data_json, calc_param = row
             initial_data = json.loads(initial_data_json)
-            return Model(name, equation, initial_data)
+            return Model(name, equation, initial_data, calc_param)
         return None
     except Exception as ex:
-        print(f"Ошибка при получении модели по имени: {ex}")
+        print(f"Ошибка при получении модели по id: {ex}")
         return None
 
 def getAllModelsName():
@@ -324,7 +317,6 @@ def getAllModelsName():
     cursor.execute("SELECT name FROM models ORDER BY name")
     models = cursor.fetchall()
     return models
-
 
 # def create_models_table():
 #     cursor = connection.cursor()
@@ -382,3 +374,6 @@ def getAllModelsName():
         #                          "year int, "\
         #                          "link varchar(128), PRIMARY KEY(id));"
         #     cursor.execute(create_table_query)
+
+if __name__ == '__main__':
+    isExpAndModelMatch(1,1)

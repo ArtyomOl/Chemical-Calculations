@@ -179,12 +179,14 @@ class ModelDialog(QDialog):
             self.ui.initialEdit.setText('')
             for item in model.initial_data.items():
                 self.ui.initialEdit.append(str(item[0]) + ' : ' + str(item[1]))
+            self.ui.calcParamEdit.setText(model.calculated_parameter)
             
     
     def saveChanges(self):
         name = self.ui.nameEdit.text()
         equation = self.ui.equationEdit.text()
         initials = self.ui.initialEdit.toPlainText()
+        calc_param = self.ui.calcParamEdit.text()
 
         initial_dict = {}
 
@@ -204,7 +206,7 @@ class ModelDialog(QDialog):
                 else:
                     initial_dict[key] = value
                     
-        new_model = foundation.basis.Model(name, equation, initial_dict)
+        new_model = foundation.basis.Model(name, equation, initial_dict, calc_param)
         
         if self.model_id:
             new_model.updateInDB(self.model_id)
@@ -437,7 +439,8 @@ class MainWindow(QMainWindow):
         self.methods_dict = {'Имитации отжига': 0, 'Гаусса-Зейделя': 1, 'Хукка-Дживса': 2, 'Антиградиент': 3, 'Ньютона': 4}
         self.method_name = 'Имитации отжига'
 
-        self.model = maths.functions.margulis
+        self.model = None
+        self.updateModelComboBox()
 
         self.ui.modelComboBox.activated.connect(self.updateModelComboBox)
         self.ui.methodsComboBox.activated.connect(self.updateMethodsComboBox)
@@ -488,7 +491,8 @@ class MainWindow(QMainWindow):
     def updateModelComboBox(self):
         model_name = self.ui.modelComboBox.currentText()
         model, _ = foundation.basis.getModelByName(model_name)
-        self.model = model.createFunction()
+        if model:
+            self.model = model.createFunction()
 
     # Изменение methodsComboBox
     def updateMethodsComboBox(self):
@@ -509,11 +513,11 @@ class MainWindow(QMainWindow):
 
     # функция вызова предупреждения об ошибке в случае некорректного ввода
     @staticmethod
-    def errorMessage():
+    def errorMessage(message: str = ''):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
-        msg.setText("Ошибка ввода")
-        msg.setInformativeText('Некорректный ввод')
+        msg.setText("!Ошибка!")
+        msg.setInformativeText(message)
         msg.setWindowTitle("Сообщение об ошибке")
         msg.exec_()
 
@@ -555,9 +559,9 @@ class MainWindow(QMainWindow):
                     self.ui.attemptsTabWidget.addTab(page, f'Расчёт {n}')
                     self.ui.attemptsTabWidget.setCurrentIndex(self.ui.attemptsTabWidget.count() - 1)
             else:
-                self.errorMessage()
+                self.errorMessage('Некорректный ввод данных')
         except Exception as ex:
-            print(ex)
+            self.errorMessage('Параметры модели и начальные данные не соотносятся')
 
     # Закрытие вкладки расчета
     def closeAttemptTab(self, index):
@@ -585,6 +589,7 @@ class MainWindow(QMainWindow):
     def onModelDialogClosed(self):
         self.createTableModels()
         self.fillModelComboBox()
+        self.updateModelComboBox()
 
 
 ##################################################################################################################################################################

@@ -9,7 +9,7 @@ import decimal as dc
 
 import foundation.basis
 import maths.functions
-from maths.functions import Function
+from maths.functions import Func
 from matplotlib.pyplot import figure
 
 
@@ -18,18 +18,18 @@ R = (8.31)
 
 # абстрактный класс - для обобщения всех используемых методов
 class Method(abc.ABC):
-    def __init__(self, id_exp: int, used_function: Function):
+    def __init__(self, id_exp: int, used_function: Func):
         self.id_exp = id_exp
         self.used_function = used_function
-        self.experiment_data = foundation.basis.getExperimentsAsID(id_exp)
+        self.experiment_data = foundation.basis.getExperimentAsID(id_exp)
         self.data = self.make_list(self.id_exp)
         self.temp = self.experiment_data['temperature']
     
-    def margulis(self, a1, a2, x, temp):
-        return R * (temp) * (x) * (1 - (x)) * ((1 - (x)) * (a1) + (a2) * (x))
+    # def margulis(self, a1, a2, x, temp):
+    #     return R * (temp) * (x) * (1 - (x)) * ((1 - (x)) * (a1) + (a2) * (x))
     
-    def model_result(self, intial_params: dict[str, float]):
-        return (float(self.used_function.result(intial_params)))
+    def model_result(self, initial_params: dict[str, float]):
+        return (float(self.used_function.result(initial_params)))
     def model_deriative(self,variable:str,point:dict[str, float]):
         return (float(self.used_function.derivative(variable,point)))
     def model_second_deriative(self,first_variable:str,second_variable:str,point:dict[str, float]):
@@ -97,7 +97,7 @@ class Method(abc.ABC):
 
     @staticmethod
     def make_list(id_exp):
-        experiment = foundation.basis.getExperimentsAsID(id_exp)
+        experiment = foundation.basis.getExperimentAsID(id_exp)
         source_data = json.loads(experiment['source_data'])
         result = []
         for i in range(min(len(source_data['x2']), len(source_data['GEJ']))):
@@ -110,20 +110,13 @@ class Method(abc.ABC):
 
         result,_ = self.calculate(initial_data)
 
-        t = foundation.basis.getExperimentsAsID(self.id_exp)['temperature']
-        x = []
-        i = arr[0][0]
-        while i < arr[len(arr) - 1][0]:
-            x.append(i)
-            i += 0.005
-        x = [0] + x + [1]
-        #y = [self.margulis(a12, a21, x2, t) for x2 in x]
-        y = []
+        t = foundation.basis.getExperimentAsID(self.id_exp)['temperature']
+        start, end = arr[0][0], arr[-1][0]
+        x = [0] + [i for i in [start + 0.005 * n for n in range(int((end - start) / 0.005) + 1)] if i < end] + [1]
+        
+        # Расчет y значений
         result['temp'] = self.temp
-        for x2 in x:
-            result['x'] = x2
-            y.append(self.model_result(result))
-        #y = [self.model_result(initial_data + {'temp': self.temp, 'x': x2}) for x2 in x]
+        y = [self.model_result({**result, 'x': x2}) for x2 in x]
 
         x2 = [arr[i][0] for i in range(len(arr))]
         x2 = [0] + x2 + [1]
@@ -132,7 +125,7 @@ class Method(abc.ABC):
 
         plt.plot(x, y)
         plt.xlabel('x2')  # Подпись для оси х
-        plt.ylabel('G')  # Подпись для оси y
+        plt.ylabel(self.used_function.calculated_parameter)  # Подпись для оси y
         plt.title('T = ' + str(t))  # Название
         plt.plot(x, y, color='green', marker='o', markersize=0.01)
         plt.plot(x2, y2, color='red', marker='o', markersize=7, linestyle='')
@@ -144,7 +137,7 @@ class Method(abc.ABC):
 
 # метод имитации отжига
 class MethodOfSimulatedAnnealing(Method):
-    def __init__(self, id_exp: int, used_function: Function = None):
+    def __init__(self, id_exp: int, used_function: Func = None):
         super().__init__(id_exp, used_function)
 
     @staticmethod
@@ -185,7 +178,7 @@ class MethodOfSimulatedAnnealing(Method):
 
 # метод Гаусса - Зейделя
 class MethodGaussZeidel(Method):
-    def __init__(self, id_exp: int, used_function: Function = None):
+    def __init__(self, id_exp: int, used_function: Func = None):
         super().__init__(id_exp, used_function)
 
     def calculate(self, initial_data: dict[str, float], max_iterations: int = 1000, tolerance: float = 1e-6) -> tuple[dict[str, float], float]:
@@ -222,7 +215,7 @@ class MethodGaussZeidel(Method):
 
 # метод Хукка - Дживса
 class MethodHookJeeves(Method):
-    def __init__(self, id_exp: int, used_function: Function = None):
+    def __init__(self, id_exp: int, used_function: Func = None):
         super().__init__(id_exp, used_function)
 
     def calculate(self, initial_data: dict[str, float], step_size: float = 1.0, tolerance: float = 1e-6) -> tuple[dict, float]:
@@ -266,7 +259,7 @@ class MethodHookJeeves(Method):
 
 # метод антиградиента
 class MethodAntigradient(Method):
-    def __init__(self, id_exp: int, used_function: Function = None):
+    def __init__(self, id_exp: int, used_function: Func = None):
         super().__init__(id_exp, used_function)
     
     def calculate(self, initial_data: dict[str, float]):
@@ -287,7 +280,7 @@ class MethodAntigradient(Method):
 
 # метод Ньютона
 class MethodNewton(Method):
-    def __init__(self, id_exp: int, used_function: Function = None):
+    def __init__(self, id_exp: int, used_function: Func = None):
         super().__init__(id_exp, used_function)
     
     def calculate(self, initial_data: dict[str, float]):
@@ -308,7 +301,7 @@ class MethodNewton(Method):
         return best_params, float(round(self.minimum_sum(best_params), 5))
 
 
-def get_method(used_function: Function = None, method_num: int = 0, id_exp: int = 0):
+def get_method(used_function: Func = None, method_num: int = 0, id_exp: int = 0):
     method = None
     match method_num:
         case 0:
