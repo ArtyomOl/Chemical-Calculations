@@ -285,6 +285,26 @@ def getModelByName(name: str):
         print(f"Ошибка при получении модели по имени: {ex}")
         return None, None
 
+def getModelById(model_id: int):
+    """
+    Получает модель из базы данных по id.
+    Возвращает экземпляр класса Model, если модель найдена, иначе None.
+    """
+    try:
+        cursor = connection.cursor()
+        select_query = "SELECT id, name, equation, initial_data FROM models WHERE id = ?"
+        cursor.execute(select_query, (model_id,))
+        row = cursor.fetchone()
+        
+        if row:
+            model_id, name, equation, initial_data_json = row
+            initial_data = json.loads(initial_data_json)
+            return Model(name, equation, initial_data)
+        return None
+    except Exception as ex:
+        print(f"Ошибка при получении модели по имени: {ex}")
+        return None
+
 def getAllModelsName():
     """
     Возвращает все имена моделей, отсортированные по алфавиту

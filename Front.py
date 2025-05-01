@@ -171,6 +171,12 @@ class ModelDialog(QDialog):
         self.model_id = model_id
         self.ui = uic.loadUi('ui/ModelDialog.ui', self)
         self.ui.saveButton.clicked.connect(self.saveChanges)
+
+        if self.model_id:
+            model = foundation.basis.getModelById(self.model_id)
+            self.ui.nameEdit.setText(model.name)
+            self.ui.equationEdit.setText(model.equation)
+            
     
     def saveChanges(self):
         name = self.ui.nameEdit.text()
@@ -198,7 +204,7 @@ class ModelDialog(QDialog):
         new_model = foundation.basis.Model(name, equation, initial_dict)
         
         if self.model_id:
-            new_model.updateInDB()
+            new_model.updateInDB(self.model_id)
         else:
             new_model.addIntoDB()
         
@@ -213,7 +219,8 @@ class MainWindow(QMainWindow):
         self.ui = uic.loadUi('ui/UiForChem.ui', self)
 
         self.EXP_PAGE_NUM = 0
-        self.ATTEMPT_PAGE_NUM = 3
+        self.ATTEMPT_PAGE_NUM = 4
+        self.MODELS_PAGE_NUM = 3
 
         # для экспериментов
         self.ui.add_button.clicked.connect(self.addButtonClicked)
@@ -224,7 +231,8 @@ class MainWindow(QMainWindow):
         self.createTableExperiments()
         self.ui.experimentsTab.clicked.connect(self.clickedOnExperimentsTab)
 
-        self.current_row = -1
+        self.exp_current_row = -1
+        self.model_current_row = -1
 
         # для расчетов
         self.makeCalculatePage()
@@ -237,6 +245,7 @@ class MainWindow(QMainWindow):
 
         # для моделей
         self.ui.addModelButton.clicked.connect(self.addModel)
+        self.ui.modelsTab.clicked.connect(self.clickedOnModelsTab)
 
         self.createTableElements()
         self.createTableModels()
@@ -307,13 +316,23 @@ class MainWindow(QMainWindow):
 
     # обработка нажатия на таблицу экспериментов
     def clickedOnExperimentsTab(self, event = None):
-        if self.current_row != self.ui.experimentsTab.currentRow():
-            self.current_row = self.ui.experimentsTab.currentRow()
+        if self.exp_current_row != self.ui.experimentsTab.currentRow():
+            self.exp_current_row = self.ui.experimentsTab.currentRow()
         else:
             if event:
                 self.ui.experimentsTab.clearSelection()
                 self.ui.experimentsTab.setCurrentCell(-1, 0)
-                self.current_row = -1
+                self.exp_current_row = -1
+
+    # обработка нажатия на таблицу моделей
+    def clickedOnModelsTab(self, event = None):
+        if self.model_current_row != self.ui.modelsTab.currentRow():
+            self.model_current_row = self.ui.modelsTab.currentRow()
+        else:
+            if event:
+                self.ui.modelsTab.clearSelection()
+                self.ui.modelsTab.setCurrentCell(-1, 0)
+                self.model_current_row = -1
 
 
     # функция для обработки нажатия на кнопку "Добавить" во вкладке Эксперименты
@@ -334,28 +353,42 @@ class MainWindow(QMainWindow):
     # Контекстное меню во вкладке эксперименты
     def contextMenuEvent(self, event):
         try:
-            top_row = self.ui.experimentsTab.selectionModel().selectedRows()
-            rows = [i for i in range(self.ui.experimentsTab.currentRow() - len(self.ui.experimentsTab.selectionModel().selectedRows()) + 1, self.ui.experimentsTab.currentRow() + 1)]
-            id_exp = [int(self.ui.experimentsTab.item(row, 0).text()) for row in rows]
-            id_exp_string = ''
-            for i in id_exp:
-                id_exp_string += f'{i},'
-            id_exp_string = id_exp_string[:-1]
+            if self.ui.tabWidget.currentIndex() == self.EXP_PAGE_NUM:
+                top_row = self.ui.experimentsTab.selectionModel().selectedRows()
+                rows = [i for i in range(self.ui.experimentsTab.currentRow() - len(self.ui.experimentsTab.selectionModel().selectedRows()) + 1, self.ui.experimentsTab.currentRow() + 1)]
+                id_exp = [int(self.ui.experimentsTab.item(row, 0).text()) for row in rows]
+                id_exp_string = ''
+                for i in id_exp:
+                    id_exp_string += f'{i},'
+                id_exp_string = id_exp_string[:-1]
 
-            item = self.ui.experimentsTab.itemAt(event.pos())
-            #now_current_row = self.ui.experimentsTab.currentRow()
-            self.clickedOnExperimentsTab()
-            if self.ui.tabWidget.currentIndex() == self.EXP_PAGE_NUM and self.current_row != -1:
-                contextMenu = QMenu(self)
-                calcAct = contextMenu.addAction("Рассчитать")
-                showAct = contextMenu.addAction("Информация")
-                action = contextMenu.exec_(self.mapToGlobal(event.pos()))
-                if action == calcAct:
-                    self.ui.tabWidget.setCurrentIndex(self.ATTEMPT_PAGE_NUM)
-                    self.ui.id_exp_edit.setText(id_exp_string)
-                elif action == showAct:
-                    d = ExperimentInfoDialog(id_exp)
-                    d.exec()
+                item = self.ui.experimentsTab.itemAt(event.pos())
+                #now_exp_current_row = self.ui.experimentsTab.currentRow()
+                self.clickedOnExperimentsTab()
+                if self.exp_current_row != -1:
+                    contextMenu = QMenu(self)
+                    calcAct = contextMenu.addAction("Рассчитать")
+                    showAct = contextMenu.addAction("Информация")
+                    action = contextMenu.exec_(self.mapToGlobal(event.pos()))
+                    if action == calcAct:
+                        self.ui.tabWidget.setCurrentIndex(self.ATTEMPT_PAGE_NUM)
+                        self.ui.id_exp_edit.setText(id_exp_string)
+                    elif action == showAct:
+                        d = ExperimentInfoDialog(id_exp)
+                        d.exec()
+
+            elif self.ui.tabWidget.currentIndex() == self.MODELS_PAGE_NUM:
+                row = self.ui.modelsTab.currentRow()
+                name = self.ui.modelsTab.item(row, 0).text()
+                _, model_id = foundation.basis.getModelByName(name)
+
+                self.clickedOnModelsTab()
+                if self.model_current_row != -1:
+                    contextMenu = QMenu(self)
+                    changeAct = contextMenu.addAction("Изменить")
+                    action = contextMenu.exec_(self.mapToGlobal(event.pos()))
+                    if action == changeAct:
+                        self.addModel(model_id)
         except Exception as ex:
             print(ex)
     
@@ -364,6 +397,8 @@ class MainWindow(QMainWindow):
     def createTableModels(self):
         self.ui.modelsTab.setRowCount(0)
         self.ui.modelsTab.setRowCount(1)
+
+        self.ui.modelsTab.setSelectionBehavior(QAbstractItemView.SelectRows)
 
         models = getAllElements('models')
         
@@ -528,8 +563,9 @@ class MainWindow(QMainWindow):
         self.ui.firstElementEdit.setText(second_element)
         self.ui.secondElementEdit.setText(first_element)
 
-    def addModel(self):
-        modelDialog = ModelDialog()
+    def addModel(self, model_id = None):
+        print(model_id)
+        modelDialog = ModelDialog(model_id)
         modelDialog.finished.connect(self.onModelDialogClosed)
         modelDialog.show()
 
