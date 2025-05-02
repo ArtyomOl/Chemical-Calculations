@@ -1,4 +1,5 @@
 import json
+import re
 
 from maths.functions import Func
 import maths
@@ -80,7 +81,7 @@ class Model:
         try:
             init_data = json.dumps(self.initial_data)
             cursor = connection.cursor()
-            insert_query = f"INSERT INTO models (name, equation, initial_data, calculated_parameter) VALUES ('{self.name}', '{self.equation}', '{init_data}, {self.calculated_parameter}');"
+            insert_query = f"INSERT INTO models (name, equation, initial_data, calculated_parameter) VALUES ('{self.name}', '{self.equation}', '{init_data}', '{self.calculated_parameter}');"
             cursor.execute(insert_query)
             connection.commit()
         except Exception as ex:
@@ -117,12 +118,19 @@ class Model:
         
         return Func(self.replacingExpressions(), self.calculated_parameter)
     
+    def formatMathExpression(self, expr):
+        expr = re.sub(r'([+\-*/^()])', r' \1 ', expr)
+        expr = re.sub(r'\s+', ' ', expr)
+        expr = ' ' + expr.strip() + ' '
+        return expr
+
     def replacingExpressions(self) -> str:
         new_equation = self.equation
+        new_equation = self.formatMathExpression(new_equation)
         for item in self.initial_data.items():
-            while item[0] in new_equation:
+            while (' ' + item[0] + ' ') in new_equation:
                 new_equation = new_equation.replace(item[0], item[1])
-        return new_equation
+        return new_equation.strip()
     
     @staticmethod
     def isInDB(model_id)  -> bool:

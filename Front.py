@@ -201,10 +201,7 @@ class ModelDialog(QDialog):
                     self.showError('Некорректный ввод')
                     return
                 key, value = expression.split(':')[0], expression.split(':')[1]
-                if value.isnumeric():
-                    initial_dict[key] = float(value)
-                else:
-                    initial_dict[key] = value
+                initial_dict[key] = value
                     
         new_model = foundation.basis.Model(name, equation, initial_dict, calc_param)
         
