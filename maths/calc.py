@@ -4,6 +4,7 @@ from typing import *
 from maths.methods import *
 
 def simple_calculation(experiment_id: int, init_data: dict[str, float], method_num: int, used_function: Optional[str]=None):
+    print('call simple_calculation')
     method = get_method(used_function, method_num, experiment_id)
     result, _ = method.calculate(init_data)
     return result

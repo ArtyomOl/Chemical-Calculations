@@ -2,12 +2,12 @@ import decimal as dc
 from sympy import *
 
 class Func:
-    def __init__(self, function_string: str = '', calculated_parameter: str = '') -> None:
+    def __init__(self, function_string: str = '', calculated_parameter: str = '', argument: str = '') -> None:
         self.function_string = function_string
         self.compiled_expression = compile(self.function_string, '<string>', 'eval')
         self.symbolic_expression = sympify(function_string)
         self.calculated_parameter = calculated_parameter
-        
+        self.argument = argument  
 
     def get_string(self):
         return self.function_string

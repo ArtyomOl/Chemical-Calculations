@@ -180,6 +180,7 @@ class ModelDialog(QDialog):
             for item in model.initial_data.items():
                 self.ui.initialEdit.append(str(item[0]) + ' : ' + str(item[1]))
             self.ui.calcParamEdit.setText(model.calculated_parameter)
+            self.ui.argParamEdit.setText(model.argument)
             
     
     def saveChanges(self):
@@ -187,6 +188,7 @@ class ModelDialog(QDialog):
         equation = self.ui.equationEdit.text()
         initials = self.ui.initialEdit.toPlainText()
         calc_param = self.ui.calcParamEdit.text()
+        argument = self.ui.argParamEdit.text()
 
         initial_dict = {}
 
@@ -203,7 +205,7 @@ class ModelDialog(QDialog):
                 key, value = expression.split(':')[0], expression.split(':')[1]
                 initial_dict[key] = value
                     
-        new_model = foundation.basis.Model(name, equation, initial_dict, calc_param)
+        new_model = foundation.basis.Model(name, equation, initial_dict, calc_param, argument)
         
         if self.model_id:
             new_model.updateInDB(self.model_id)
@@ -558,6 +560,7 @@ class MainWindow(QMainWindow):
             else:
                 self.errorMessage('Некорректный ввод данных')
         except Exception as ex:
+            print('Error after calculateButton clicked: ', ex)
             self.errorMessage('Параметры модели и начальные данные не соотносятся')
 
     # Закрытие вкладки расчета

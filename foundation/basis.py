@@ -71,17 +71,18 @@ class Attempt:
             print(ex)
 
 class Model:
-    def __init__(self, name: str, equation: str, initial_data: dict, calculated_parameter: str):
+    def __init__(self, name: str, equation: str, initial_data: dict, calculated_parameter: str, argument: str):
         self.name = name
         self.equation = equation
         self.initial_data = initial_data
         self.calculated_parameter = calculated_parameter
+        self.argument = argument
     
     def addIntoDB(self):
         try:
             init_data = json.dumps(self.initial_data)
             cursor = connection.cursor()
-            insert_query = f"INSERT INTO models (name, equation, initial_data, calculated_parameter) VALUES ('{self.name}', '{self.equation}', '{init_data}', '{self.calculated_parameter}');"
+            insert_query = f"INSERT INTO models (name, equation, initial_data, calculated_parameter, argument) VALUES ('{self.name}', '{self.equation}', '{init_data}', '{self.calculated_parameter}', '{self.argument}');"
             cursor.execute(insert_query)
             connection.commit()
         except Exception as ex:
@@ -100,11 +101,11 @@ class Model:
             cursor = connection.cursor()
             update_query = """
                 UPDATE models 
-                SET name = ?, equation = ?, initial_data = ?, calculated_parameter = ?
+                SET name = ?, equation = ?, initial_data = ?, calculated_parameter = ?, argument = ?
                 WHERE id = ?
             """
             cursor.execute(update_query, 
-                        (self.name, self.equation, init_data, self.calculated_parameter, model_id))
+                        (self.name, self.equation, init_data, self.calculated_parameter, self.argument, model_id))
             connection.commit()
             return True
         except Exception as ex:
@@ -116,10 +117,12 @@ class Model:
         print(self.equation)
         print(self.replacingExpressions())
         
-        return Func(self.replacingExpressions(), self.calculated_parameter)
+        return Func(self.replacingExpressions(), self.calculated_parameter, self.argument)
     
     def formatMathExpression(self, expr):
+        expr = expr.replace('**', 'ᕽᕽ')
         expr = re.sub(r'([+\-*/^()])', r' \1 ', expr)
+        expr = expr.replace('ᕽᕽ', '**')
         expr = re.sub(r'\s+', ' ', expr)
         expr = ' ' + expr.strip() + ' '
         return expr
@@ -284,14 +287,14 @@ def getModelByName(name: str):
     """
     try:
         cursor = connection.cursor()
-        select_query = "SELECT id, name, equation, initial_data, calculated_parameter FROM models WHERE name = ?"
+        select_query = "SELECT id, name, equation, initial_data, calculated_parameter, argument FROM models WHERE name = ?"
         cursor.execute(select_query, (name,))
         row = cursor.fetchone()
         
         if row:
-            model_id, name, equation, initial_data_json, calc_param = row
+            model_id, name, equation, initial_data_json, calc_param, argument = row
             initial_data = json.loads(initial_data_json)
-            return Model(name, equation, initial_data, calc_param), model_id
+            return Model(name, equation, initial_data, calc_param, argument), model_id
         return None, None
     except Exception as ex:
         print(f"Ошибка при получении модели по имени: {ex}")
@@ -304,14 +307,14 @@ def getModelById(model_id: int):
     """
     try:
         cursor = connection.cursor()
-        select_query = "SELECT id, name, equation, initial_data, calculated_parameter FROM models WHERE id = ?"
+        select_query = "SELECT id, name, equation, initial_data, calculated_parameter, argument FROM models WHERE id = ?"
         cursor.execute(select_query, (model_id,))
         row = cursor.fetchone()
         
         if row:
-            model_id, name, equation, initial_data_json, calc_param = row
+            model_id, name, equation, initial_data_json, calc_param, argument = row
             initial_data = json.loads(initial_data_json)
-            return Model(name, equation, initial_data, calc_param)
+            return Model(name, equation, initial_data, calc_param, argument)
         return None
     except Exception as ex:
         print(f"Ошибка при получении модели по id: {ex}")

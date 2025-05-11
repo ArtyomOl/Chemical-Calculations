@@ -95,13 +95,12 @@ class Method(abc.ABC):
     @abstractmethod
     def calculate(self, initial_data: dict[str, float]): pass
 
-    @staticmethod
-    def make_list(id_exp):
+    def make_list(self, id_exp):
         experiment = foundation.basis.getExperimentAsID(id_exp)
         source_data = json.loads(experiment['source_data'])
         result = []
-        for i in range(min(len(source_data['x2']), len(source_data['GEJ']))):
-            result.append([float(source_data['x2'][i]), int(source_data['GEJ'][i])])
+        for i in range(min(len(source_data[self.used_function.argument]), len(source_data[self.used_function.calculated_parameter]))):
+            result.append([float(source_data[self.used_function.argument][i]), float(source_data[self.used_function.calculated_parameter][i])])
         return result
 
 
