@@ -1,12 +1,12 @@
 import PyQt5.QtWidgets
 import sys
 
-import Front
+from screens.mainWindow import MainWindow
 
 if __name__ == '__main__':
     app = PyQt5.QtWidgets.QApplication(sys.argv)
 
-    window = Front.MainWindow()
+    window = MainWindow()
     window.show()
 
     app.exec()
