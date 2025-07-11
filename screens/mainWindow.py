@@ -225,6 +225,7 @@ class MainWindow(QMainWindow):
         self.method_name = 'Имитации отжига'
 
         self.model = None
+        self.model_name = 'margulis'
         self.updateModelComboBox()
 
         self.ui.modelComboBox.activated.connect(self.updateModelComboBox)
@@ -275,6 +276,7 @@ class MainWindow(QMainWindow):
     # Изменение modelComboBox
     def updateModelComboBox(self):
         model_name = self.ui.modelComboBox.currentText()
+        self.model_name = model_name
         model, _ = foundation.basis.getModelByName(model_name)
         if model:
             self.model = model.createFunction()
