@@ -12,6 +12,14 @@ maths/__init__.py
 maths/calc.py
 maths/functions.py
 maths/methods.py
+screens/__init__.py
+screens/addExperimentWindow.py
+screens/attemptWidget.py
+screens/experimentInfoDialog.py
+screens/filtersDialog.py
+screens/importExperimentDialog.py
+screens/mainWindow.py
+screens/modelDialog.py
 search/__init__.py
 search/search.py
 storage/__init__.py

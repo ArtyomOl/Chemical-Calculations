@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-import reliase
+import foundation.basis as reliase
 
 def get_experiment_from_csv(path: str):
     elements_names = pd.read_csv(path, nrows=0).columns.to_list()

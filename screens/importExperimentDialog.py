@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 from PyQt5 import uic
 
-import storage
+from storage import from_file_imports
 
 
 class ImportExperimentDialog(QDialog):
@@ -22,8 +22,8 @@ class ImportExperimentDialog(QDialog):
 
     def addButtonClicked(self):
         if self.correctFileDirectoryCheck(self.ui.pathLineEdit.text()):
-            exp = storage.from_file_imports.get_experiment_from_csv(self.ui.pathLineEdit.text())
-            exp.add_into_db()
+            exp = from_file_imports.get_experiment_from_csv(self.ui.pathLineEdit.text())
+            exp.addIntoDB()
         else:
             self.filePathError()
     
