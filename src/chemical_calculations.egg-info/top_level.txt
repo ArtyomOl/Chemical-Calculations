@@ -1,0 +1,6 @@
+calculation
+core
+domain
+infrastructure
+services
+ui

@@ -1,5 +1,0 @@
-config
-foundation
-maths
-search
-storage

@@ -1,0 +1,2 @@
+[console_scripts]
+chem-calc = src.main:main
