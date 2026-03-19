@@ -60,6 +60,22 @@ class Method(abc.ABC):
     def minimum_second_deriative_sum(self, initial_params: dict[str, float],first_variable:str, second_variable:str) -> dc.Decimal:
         return sum(self.minimum_second_deriative(gej, initial_params, x,first_variable,second_variable) for x, gej in self.data)
     
+    def calculate_errors(self, initial_params: dict[str, float]) -> tuple[float, float]:
+        params = initial_params.copy()
+        params['temp'] = self.temp
+        n = len(self.data)
+        abs_error = 0
+        squared_error = 0
+        for x, gej in self.data:
+            params['x'] = x
+            model_val = self.model_result(params)
+            diff = abs(gej - model_val)
+            abs_error += diff
+            squared_error += diff ** 2
+        abs_error /= n
+        squared_error = (squared_error / n) ** 0.5
+        return abs_error, squared_error
+    
     def H(self, initial_params: dict[str,float]):
         matr_doc = {}
         for i in range(0, len(initial_params)):
@@ -107,15 +123,15 @@ class Method(abc.ABC):
     def draw_chart(self, initial_data: dict[str, float], ax=None):
         arr = self.make_list(self.id_exp)
 
-        result,_ = self.calculate(initial_data)
+        result, _ = self.calculate(initial_data)
 
         t = foundation.basis.getExperimentAsID(self.id_exp)['temperature']
         start, end = arr[0][0], arr[-1][0]
         x = [0] + [i for i in [start + 0.005 * n for n in range(int((end - start) / 0.005) + 1)] if i < end] + [1]
         
-        # Расчет y значений
-        result['temp'] = self.temp
-        y = [self.model_result({**result, 'x': x2}) for x2 in x]
+        params = {k: v for k, v in result.items() if k not in ['minimum', 'abs_error', 'squared_error']}
+        params['temp'] = self.temp
+        y = [self.model_result({**params, 'x': x2}) for x2 in x]
 
         x2 = [arr[i][0] for i in range(len(arr))]
         x2 = [0] + x2 + [1]
@@ -123,13 +139,12 @@ class Method(abc.ABC):
         y2 = [0] + y2 + [1]
 
         plt.plot(x, y)
-        plt.xlabel('x2')  # Подпись для оси х
-        plt.ylabel(self.used_function.calculated_parameter)  # Подпись для оси y
-        plt.title('T = ' + str(t))  # Название
+        plt.xlabel('x2')
+        plt.ylabel(self.used_function.calculated_parameter)
+        plt.title('T = ' + str(t))
         plt.plot(x, y, color='green', marker='o', markersize=0.01)
         plt.plot(x2, y2, color='red', marker='o', markersize=7, linestyle='')
         plt.grid()
-        #plt.show()
         ax = plt
 
 
@@ -156,7 +171,7 @@ class MethodOfSimulatedAnnealing(Method):
         except OverflowError:
             return 0.0
 
-    def calculate(self, initial_data: dict[str, float], max_iterations: int = 10000, initial_temperature: float = 100.0) -> tuple[dict[str, float], float]:
+    def calculate(self, initial_data: dict[str, float], max_iterations: int = 10000, initial_temperature: float = 100.0) -> tuple[dict[str, float], dict]:
         current_params = initial_data.copy()
         best_params = current_params.copy()
         best_value = self.minimum_sum(best_params)
@@ -172,7 +187,8 @@ class MethodOfSimulatedAnnealing(Method):
                     best_params = new_params.copy()
                     best_value = new_value
 
-        return best_params, float(best_value)
+        abs_err, sq_err = self.calculate_errors(best_params)
+        return best_params, {'minimum': float(best_value), 'abs_error': abs_err, 'squared_error': sq_err}
 
 
 # метод Гаусса - Зейделя
@@ -180,55 +196,50 @@ class MethodGaussZeidel(Method):
     def __init__(self, id_exp: int, used_function: Func = None):
         super().__init__(id_exp, used_function)
 
-    def calculate(self, initial_data: dict[str, float], max_iterations: int = 1000, tolerance: float = 1e-6) -> tuple[dict[str, float], float]:
+    def calculate(self, initial_data: dict[str, float], max_iterations: int = 1000, tolerance: float = 1e-6) -> tuple[dict[str, float], dict]:
         current_params = initial_data.copy()
-        step_sizes = {key: 1.0 for key in current_params}  # Начальные шаги для каждого параметра
+        step_sizes = {key: 1.0 for key in current_params}
         best_params = current_params.copy()
         best_value = self.minimum_sum(best_params)
 
         for iteration in range(max_iterations):
             for key in current_params:
-                # Пробуем увеличить параметр
                 current_params[key] += step_sizes[key]
                 new_value = self.minimum_sum(current_params)
                 if new_value < best_value:
                     best_value = new_value
                     best_params = current_params.copy()
                 else:
-                    # Пробуем уменьшить параметр
                     current_params[key] -= 2 * step_sizes[key]
                     new_value = self.minimum_sum(current_params)
                     if new_value < best_value:
                         best_value = new_value
                         best_params = current_params.copy()
                     else:
-                        # Возвращаем исходное значение и уменьшаем шаг
                         current_params[key] += step_sizes[key]
                         step_sizes[key] /= 2
 
-            # Проверка на сходимость
             if all(size < tolerance for size in step_sizes.values()):
                 break
 
-        return best_params, float(best_value)
+        abs_err, sq_err = self.calculate_errors(best_params)
+        return best_params, {'minimum': float(best_value), 'abs_error': abs_err, 'squared_error': sq_err}
 
 # метод Хукка - Дживса
 class MethodHookJeeves(Method):
     def __init__(self, id_exp: int, used_function: Func = None):
         super().__init__(id_exp, used_function)
 
-    def calculate(self, initial_data: dict[str, float], step_size: float = 1.0, tolerance: float = 1e-6) -> tuple[dict, float]:
+    def calculate(self, initial_data: dict[str, float], step_size: float = 1.0, tolerance: float = 1e-6) -> tuple[dict, dict]:
         current_params = {key: float(value) for key, value in initial_data.items()}
         best_params = current_params.copy()
         best_value = float(self.minimum_sum(best_params))
 
         while step_size > tolerance:
-            # Исследовательский поиск
             improved = False
             for key in current_params:
                 original_value = current_params[key]
 
-                # Пробуем увеличить параметр
                 current_params[key] = original_value + step_size
                 new_value = float(self.minimum_sum(current_params))
                 if new_value < best_value:
@@ -236,7 +247,6 @@ class MethodHookJeeves(Method):
                     best_params = current_params.copy()
                     improved = True
                 else:
-                    # Пробуем уменьшить параметр
                     current_params[key] = original_value - step_size
                     new_value = float(self.minimum_sum(current_params))
                     if new_value < best_value:
@@ -244,17 +254,13 @@ class MethodHookJeeves(Method):
                         best_params = current_params.copy()
                         improved = True
                     else:
-                        # Возвращаем исходное значение
                         current_params[key] = original_value
 
-            # Если улучшений нет, уменьшаем шаг
             if not improved:
                 step_size /= 2
 
-        return (
-            best_params,
-            round(best_value, 5)
-        )
+        abs_err, sq_err = self.calculate_errors(best_params)
+        return best_params, {'minimum': round(best_value, 5), 'abs_error': abs_err, 'squared_error': sq_err}
 
 # метод антиградиента
 class MethodAntigradient(Method):
@@ -271,11 +277,11 @@ class MethodAntigradient(Method):
             cnt += 1
             if self.minimum_sum(best_params) > self.minimum_sum(current_params):
                 lam /= 2
-                lam2 /= 2
             current_params = best_params.copy()
             for key in best_params:
                 best_params[key]=best_params[key] + lam * float(self.minimum_deriative_sum(best_params,key))
-        return best_params, float(round(self.minimum_sum(best_params), 5))
+        abs_err, sq_err = self.calculate_errors(best_params)
+        return best_params, {'minimum': float(round(self.minimum_sum(best_params), 5)), 'abs_error': abs_err, 'squared_error': sq_err}
 
 # метод Ньютона
 class MethodNewton(Method):
@@ -297,22 +303,23 @@ class MethodNewton(Method):
             for key in best_params:
                 best_params[key]=best_params[key] - plus[i]
                 i+=1
-        return best_params, float(round(self.minimum_sum(best_params), 5))
+        abs_err, sq_err = self.calculate_errors(best_params)
+        return best_params, {'minimum': float(round(self.minimum_sum(best_params), 5)), 'abs_error': abs_err, 'squared_error': sq_err}
 
 
 def get_method(used_function: Func = None, method_num: int = 0, id_exp: int = 0):
-    method = None
-    match method_num:
-        case 0:
-            method = MethodOfSimulatedAnnealing(id_exp, used_function)
-        case 1:
-            method = MethodGaussZeidel(id_exp, used_function)
-        case 2:
-            method = MethodHookJeeves(id_exp, used_function)
-        case 3:
-            method = MethodAntigradient(id_exp, used_function)
-        case 4:
-            method = MethodNewton(id_exp, used_function)
+    if method_num == 0:
+        method = MethodOfSimulatedAnnealing(id_exp, used_function)
+    elif method_num == 1:
+        method = MethodGaussZeidel(id_exp, used_function)
+    elif method_num == 2:
+        method = MethodHookJeeves(id_exp, used_function)
+    elif method_num == 3:
+        method = MethodAntigradient(id_exp, used_function)
+    elif method_num == 4:
+        method = MethodNewton(id_exp, used_function)
+    else:
+        method = None
     return method
 
 
