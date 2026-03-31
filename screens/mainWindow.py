@@ -340,7 +340,9 @@ class MainWindow(QMainWindow):
                         except Exception as ex:
                             self.errorMessage()
                         result = simple_calculation(id_exp, init_data, self.methods_dict[self.method_name], self.model)
-                        attempt = Attempt(id_exp, self.model, self.methods_dict[self.method_name], init_data, result)
+                        params = {k: v for k, v in result.items() if k not in ['minimum', 'abs_error', 'squared_error']}
+                        metrics = {k: v for k, v in result.items() if k in ['minimum', 'abs_error', 'squared_error']}
+                        attempt = Attempt(id_exp, self.model, self.methods_dict[self.method_name], init_data, {**params, **metrics})
                     page = AttemptWidget(attempt)
                     n = attempt.number
                     self.ui.attemptsTabWidget.addTab(page, f'Расчёт {n}')

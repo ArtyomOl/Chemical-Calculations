@@ -49,10 +49,28 @@ class AttemptWidget(QWidget):
                 for i in item[1]:
                     self.ui.resultTextBrowser.append(f'{i}\n')
             elif type(item[1]) == dict:
-                for i in item[1]:
-                    self.ui.resultTextBrowser.append(f'{i}\n')
+                if item[0] == 'result':
+                    for i in item[1]:
+                        self.ui.resultTextBrowser.append(f'{i}\n')
+                else:
+                    for key, val in item[1].items():
+                        if key == 'minimum':
+                            self.ui.resultTextBrowser.append(f'Минимум: {val}')
+                        elif key == 'abs_error':
+                            self.ui.resultTextBrowser.append(f'Средняя погрешность: {val:.6f}')
+                        elif key == 'squared_error':
+                            self.ui.resultTextBrowser.append(f'Среднеквадратичная погрешность: {val:.6f}')
+                        else:
+                            self.ui.resultTextBrowser.append(f'{key}: {val}')
             else:
-                self.ui.resultTextBrowser.append(f'{item[0]}: {item[1]}\n')
+                if item[0] == 'minimum':
+                    self.ui.resultTextBrowser.append(f'Минимум: {item[1]}')
+                elif item[0] == 'abs_error':
+                    self.ui.resultTextBrowser.append(f'Средняя погрешность: {item[1]:.6f}')
+                elif item[0] == 'squared_error':
+                    self.ui.resultTextBrowser.append(f'Среднеквадратичная погрешность: {item[1]:.6f}')
+                else:
+                    self.ui.resultTextBrowser.append(f'{item[0]}: {item[1]}\n')
 
     def addAttempt(self):
         self.attempt.add_into_global_bd()
