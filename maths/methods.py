@@ -69,9 +69,9 @@ class Method(abc.ABC):
         for x, gej in self.data:
             params['x'] = x
             model_val = self.model_result(params)
-            diff = abs(gej - model_val)
-            abs_error += diff
-            squared_error += diff ** 2
+            rel_diff = abs(gej - model_val) / abs(gej) if gej != 0 else 0.0
+            abs_error += rel_diff
+            squared_error += rel_diff ** 2
         abs_error /= n
         squared_error = (squared_error / n) ** 0.5
         return abs_error, squared_error
